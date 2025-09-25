@@ -13,7 +13,7 @@ st.sidebar.info("Upload your dataset and explore insights step by step.")
 
 # Title
 st.title("📊 Exploratory Data Analysis (EDA) Dashboard")
-st.markdown("Built by a **Data Scientist** for quick data insights.")
+st.markdown("Built for quick data insights.")
 
 # Upload dataset
 uploaded_file = st.sidebar.file_uploader("📂 Upload CSV file", type=["csv"])

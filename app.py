@@ -49,14 +49,20 @@ if uploaded_file is not None:
     st.header("📈 Summary Statistics")
     st.write(df.describe(include="all").T)
 
-    # Correlation Heatmap
+    # Correlation Heatmap (with column selection)
     st.header("🔥 Correlation Analysis")
     numeric_df = df.select_dtypes(include=[np.number])
     if not numeric_df.empty:
-        corr = numeric_df.corr()
-        fig, ax = plt.subplots(figsize=(10, 6))
-        sns.heatmap(corr, annot=True, cmap="coolwarm", fmt=".2f", ax=ax)
-        st.pyplot(fig)
+        selected_corr_cols = st.multiselect(
+            "Select numeric columns for correlation", 
+            numeric_df.columns, 
+            default=numeric_df.columns[:5]
+        )
+        if selected_corr_cols:
+            corr = numeric_df[selected_corr_cols].corr()
+            fig, ax = plt.subplots(figsize=(8, 5))
+            sns.heatmap(corr, annot=True, cmap="coolwarm", fmt=".2f", ax=ax)
+            st.pyplot(fig)
     else:
         st.info("No numeric columns available for correlation heatmap.")
 
@@ -73,32 +79,48 @@ if uploaded_file is not None:
         ax.set_title(f"Distribution of {column}")
         st.pyplot(fig)
 
-        # Boxplot for outliers
+        # Boxplot
         fig, ax = plt.subplots(figsize=(6, 4))
         sns.boxplot(x=df[column], ax=ax, color="orange")
         ax.set_title(f"Boxplot of {column}")
         st.pyplot(fig)
 
     else:
-        st.write(df[column].value_counts())
+        value_counts = df[column].value_counts()
+        if len(value_counts) > 20:
+            top_values = value_counts[:20]
+            top_values["Other"] = value_counts[20:].sum()
+            plot_data = top_values
+        else:
+            plot_data = value_counts
+
+        st.write(plot_data)
         fig, ax = plt.subplots(figsize=(8, 5))
-        sns.countplot(x=df[column], ax=ax, palette="Set2")
+        sns.barplot(x=plot_data.index, y=plot_data.values, ax=ax, palette="Set2")
         ax.set_xticklabels(ax.get_xticklabels(), rotation=45, ha="right")
         ax.set_title(f"Count plot of {column}")
         st.pyplot(fig)
 
-    # Pairplot
+    # Multivariate Analysis (lightweight alternative to pairplot)
     st.header("📌 Multivariate Analysis")
-    if st.checkbox("Show Pairplot (slow for large data)"):
-        fig = sns.pairplot(numeric_df, diag_kind="kde", plot_kws={"alpha":0.6})
-        st.pyplot(fig.fig)
+    if not numeric_df.empty:
+        cols = st.multiselect("Select two numeric columns for scatter plot", numeric_df.columns, default=numeric_df.columns[:2])
+        if len(cols) == 2:
+            fig, ax = plt.subplots(figsize=(8, 5))
+            sns.scatterplot(x=df[cols[0]], y=df[cols[1]], alpha=0.6, ax=ax)
+            ax.set_title(f"Scatter Plot: {cols[0]} vs {cols[1]}")
+            st.pyplot(fig)
+    else:
+        st.info("Not enough numeric columns for scatter plot.")
 
-    # Outlier Detection (Z-score method)
+    # Outlier Detection (improved per-column)
     st.header("🚨 Outlier Detection")
     if not numeric_df.empty:
         z_scores = np.abs((numeric_df - numeric_df.mean()) / numeric_df.std())
-        outliers = (z_scores > 3).sum().sum()
-        st.write(f"**Number of potential outliers (|Z| > 3):** {outliers}")
+        outlier_counts = (z_scores > 3).sum()
+        st.write("**Potential outliers per column (|Z| > 3):**")
+        st.write(outlier_counts[outlier_counts > 0])
+        st.write(f"**Total outliers across all numeric columns:** {outlier_counts.sum()}")
 
 else:
     st.warning("👆 Upload a CSV file from the sidebar to begin.")
